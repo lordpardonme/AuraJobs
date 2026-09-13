@@ -34,6 +34,7 @@ class OutputExporter:
             # Reorder key columns to the front for optimal viewing
             priority_cols = [
                 "priority",
+                "match_type",
                 "match_score",
                 "title",
                 "company",

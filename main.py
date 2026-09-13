@@ -67,7 +67,26 @@ def process_results(raw_df: pd.DataFrame, profile: dict, scorer: MatchScorer, cl
     if df.empty:
         return df
 
-    df = classifier.filter_dataframe(df)
+    strict_df = classifier.filter_dataframe(df)
+
+    if strict_df.empty and not df.empty:
+        # Graceful Fallback Mode:
+        # If strict title filtering produced 0 jobs, don't leave the user empty-handed!
+        print("\n[!] Notice: No exact title matches met strict criteria.")
+        print("    --> Activating Graceful Fallback Mode: Surfacing top broad domain opportunities...")
+
+        # Keep jobs that do not hit hard negative exclusions
+        fallback_mask = df["title"].apply(lambda t: not any(neg in str(t).lower() for neg in classifier.negative_terms))
+        fallback_df = df[fallback_mask].copy()
+
+        if not fallback_df.empty:
+            df = fallback_df
+            df["match_type"] = "BROAD DOMAIN MATCH"
+        else:
+            df = strict_df
+    else:
+        df = strict_df.copy()
+        df["match_type"] = "EXACT MATCH"
 
     if df.empty:
         return df
@@ -373,6 +392,10 @@ def main():
     print(f"  Runtime                     : {runtime_minutes:.2f} minutes")
     print(f"  Raw Results Ingested        : {len(raw_combined)}")
     print(f"  Relevant Qualified Jobs     : {len(final_df)}")
+    if not final_df.empty and "match_type" in final_df.columns:
+        match_types = final_df["match_type"].value_counts().to_dict()
+        match_desc = ", ".join(f"{count} {mtype}" for mtype, count in match_types.items())
+        print(f"  Match Classification        : {match_desc}")
     if not final_df.empty and "visa_status" in final_df.columns:
         visa_count = len(final_df[final_df["visa_status"] == "SPONSORSHIP MENTIONED"])
         print(f"  Visa Sponsorship Mentioned  : {visa_count}")
@@ -380,7 +403,7 @@ def main():
     if not final_df.empty:
         print("\nTOP OPPORTUNITIES DISCOVERED:")
         print("-" * 78)
-        cols = ["priority", "match_score", "visa_status", "title", "company", "location", "job_url"]
+        cols = ["priority", "match_type", "match_score", "visa_status", "title", "company", "location", "job_url"]
         cols = [c for c in cols if c in final_df.columns]
         print(final_df[cols].head(15).to_string(index=False))
 

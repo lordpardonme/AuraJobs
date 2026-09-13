@@ -4,7 +4,7 @@ from datetime import datetime
 from .expander import RoleExpander
 
 def prompt_user_profile(output_dir: str = None, non_interactive: bool = False,
-                        default_role: str = "Product Designer", default_seniority: str = "Any") -> dict:
+                        default_role: str = "Product Manager", default_seniority: str = "Any") -> dict:
     """
     Interactively prompts the user to define their search parameters,
     builds the role expansion profile, and saves the profile to JSON.
@@ -26,7 +26,7 @@ def prompt_user_profile(output_dir: str = None, non_interactive: bool = False,
         print("Define your target job parameters below (press Enter for defaults):\n")
 
         # 1. Role family
-        role_input = input(f"> Enter target job family [default: {default_role}]: ").strip()
+        role_input = input(f"> Enter target job family (e.g. Product Manager, HRIS Specialist, Software Engineer) [default: {default_role}]: ").strip()
         target_role = role_input if role_input else default_role
 
         # 2. Seniority
@@ -53,11 +53,11 @@ def prompt_user_profile(output_dir: str = None, non_interactive: bool = False,
         seniority = sen_map.get(sen_choice, sen_choice.capitalize() if sen_choice else "Any")
 
         # 3. Skills
-        skills_input = input("\n> Optional skills to boost (comma-separated, e.g. Figma, SaaS, B2B): ").strip()
+        skills_input = input("\n> Optional skills to boost (comma-separated, e.g. Workday, Python, SQL, Figma, Agile): ").strip()
         skills = [s.strip().lower() for s in skills_input.split(",") if s.strip()] if skills_input else []
 
         # 4. Exclusions
-        excl_input = input("\n> Additional role exclusions (comma-separated, e.g. Graphic Design): ").strip()
+        excl_input = input("\n> Additional role exclusions (comma-separated, e.g. Intern, Agency, Freelance): ").strip()
         exclusions = [e.strip().lower() for e in excl_input.split(",") if e.strip()] if excl_input else []
 
         # 5. Geography
