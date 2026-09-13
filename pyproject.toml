@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aurajobs"
+version = "1.0.0"
+description = "Autonomous Multi-Board Career Intelligence & Job Aggregation Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "lordpardonme" }
+]
+keywords = [
+    "job-search",
+    "career-intelligence",
+    "job-scraper",
+    "ats",
+    "job-hunter",
+    "linkedin",
+    "indeed",
+    "google-jobs",
+    "remote-jobs",
+    "automation"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content"
+]
+dependencies = [
+    "python-jobspy>=1.1.72",
+    "pandas>=2.0.0",
+    "pyyaml>=6.0",
+    "requests>=2.28.0",
+    "tabulate>=0.9.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/lordpardonme/AuraJobs"
+Repository = "https://github.com/lordpardonme/AuraJobs.git"
+"Bug Tracker" = "https://github.com/lordpardonme/AuraJobs/issues"
+
+[project.scripts]
+aurajobs = "main:main"

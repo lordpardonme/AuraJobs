@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output data files and search results (strictly ignore searches as requested)
+output/
+checkpoints/
+logs/
+*.csv
+*.tsv
+*.xlsx
+JOBSPY_*
+UIUX_*
+jobs.csv
+
+# Environments & Virtual Envs
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/

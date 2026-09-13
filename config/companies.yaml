@@ -1,0 +1,30 @@
+# ============================================================
+# CURATED HIGH-GROWTH TECH & PRODUCT COMPANIES ON ATS PLATFORMS
+# ============================================================
+
+ashby_companies:
+  - "linear"
+  - "notion"
+  - "openai"
+  - "retool"
+  - "ramp"
+  - "cursor"
+  - "deel"
+  - "postman"
+  - "airtable"
+  - "sentry"
+  - "vanta"
+  - "brex"
+
+greenhouse_companies:
+  - "gitlab"
+  - "stripe"
+  - "airbnb"
+  - "doordash"
+  - "cloudflare"
+  - "figma"
+  - "careem"
+  - "deliveroo"
+  - "monzo"
+  - "klarna"
+  - "transferwise"

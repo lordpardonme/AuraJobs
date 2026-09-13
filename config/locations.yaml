@@ -1,0 +1,61 @@
+# ============================================================
+# LOCATIONS & COUNTRY MAPPINGS
+# ============================================================
+
+india_locations:
+  - "India"
+  - "Delhi"
+  - "Noida"
+  - "Gurgaon"
+  - "Bengaluru"
+  - "Bangalore"
+  - "Pune"
+  - "Mumbai"
+  - "Chandigarh"
+  - "Hyderabad"
+  - "Mangalore"
+  - "Mangaluru"
+  - "Kochi"
+
+middle_east_locations:
+  - "Dubai, UAE"
+  - "Abu Dhabi, UAE"
+  - "Riyadh, Saudi Arabia"
+  - "Jeddah, Saudi Arabia"
+  - "Doha, Qatar"
+  - "Kuwait City, Kuwait"
+  - "Manama, Bahrain"
+  - "Muscat, Oman"
+
+country_map:
+  "India": "India"
+  "Delhi": "India"
+  "Noida": "India"
+  "Gurgaon": "India"
+  "Bengaluru": "India"
+  "Bangalore": "India"
+  "Pune": "India"
+  "Mumbai": "India"
+  "Chandigarh": "India"
+  "Hyderabad": "India"
+  "Mangalore": "India"
+  "Mangaluru": "India"
+  "Kochi": "India"
+  "Dubai, UAE": "United Arab Emirates"
+  "Abu Dhabi, UAE": "United Arab Emirates"
+  "Riyadh, Saudi Arabia": "Saudi Arabia"
+  "Jeddah, Saudi Arabia": "Saudi Arabia"
+  "Doha, Qatar": "Qatar"
+  "Kuwait City, Kuwait": "Kuwait"
+  "Manama, Bahrain": "Bahrain"
+  "Muscat, Oman": "Oman"
+
+indeed_country_map:
+  "India": "india"
+  "United Arab Emirates": "united arab emirates"
+  "Saudi Arabia": "saudi arabia"
+  "Qatar": "qatar"
+  "Kuwait": "kuwait"
+  "Bahrain": "bahrain"
+  "Oman": "oman"
+

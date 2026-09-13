@@ -1,0 +1,45 @@
+# ============================================================
+# SOURCE ADAPTER CONFIGURATION - AURAJOBS ENGINE
+# ============================================================
+
+sources:
+  multiboard:
+    enabled: true
+    regional_sites:
+      India:
+        - "linkedin"
+        - "indeed"
+        - "google"
+        - "glassdoor"
+        - "naukri"
+      "Middle East":
+        - "linkedin"
+        - "indeed"
+        - "google"
+      Global:
+        - "linkedin"
+        - "indeed"
+        - "google"
+    site_notes:
+      bayt: "Currently returning 403 Forbidden on international endpoints; disabled by default."
+      ziprecruiter: "US/Canada-focused, disabled for IN/ME default budget."
+      naukri: "Subject to 406 recaptcha, caught gracefully."
+      glassdoor: "Subject to 400 location issues, caught gracefully."
+
+  jobspy:
+    enabled: true
+    regional_sites:
+      India:
+        - "linkedin"
+        - "indeed"
+        - "google"
+        - "glassdoor"
+        - "naukri"
+      "Middle East":
+        - "linkedin"
+        - "indeed"
+        - "google"
+      Global:
+        - "linkedin"
+        - "indeed"
+        - "google"
