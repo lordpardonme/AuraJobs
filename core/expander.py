@@ -148,56 +148,82 @@ class RoleExpander:
                 ]
 
         else:
-            # Dynamic expansion for custom role (e.g. DevOps Engineer)
+            # Dynamic expansion for custom role (e.g. HR Transformation Specialist, DevOps Engineer)
+            words = base_role.split()
+            generic_role_nouns = {
+                "specialist", "consultant", "manager", "lead", "analyst", "associate",
+                "director", "expert", "advisor", "officer", "coordinator", "partner",
+                "practitioner", "engineer", "developer", "designer"
+            }
+            if len(words) >= 2 and words[-1].lower() in generic_role_nouns:
+                core_domain = " ".join(words[:-1])
+            else:
+                core_domain = base_role
+
             positive_title_terms.append(base_role.lower())
+            if core_domain.lower() not in positive_title_terms:
+                positive_title_terms.append(core_domain.lower())
             if target_role.lower() not in positive_title_terms:
                 positive_title_terms.append(target_role.lower())
+
+            # Add common title variations for multi-word domain
+            if len(words) >= 2:
+                for noun in ["lead", "manager", "consultant", "specialist", "analyst", "advisor"]:
+                    var = f"{core_domain.lower()} {noun}"
+                    if var not in positive_title_terms:
+                        positive_title_terms.append(var)
 
             if norm_sen == "intern":
                 search_terms = [
                     f"{base_role} Intern",
                     f"{base_role} Internship",
-                    f"{base_role} Trainee",
+                    f"{core_domain} Intern",
                 ]
             elif norm_sen in ["junior", "entry", "entry-level"]:
                 search_terms = [
                     f"Junior {base_role}",
                     f"Associate {base_role}",
-                    f"Entry Level {base_role}",
+                    f"Junior {core_domain}",
                 ]
             elif norm_sen in ["mid-level", "mid"]:
                 search_terms = [
                     base_role,
+                    core_domain,
                     f"Mid {base_role}",
                 ]
             elif norm_sen == "senior":
                 search_terms = [
                     f"Senior {base_role}",
+                    f"Senior {core_domain}",
+                    f"Lead {core_domain}",
                     f"Sr {base_role}",
-                    f"Senior {base_role.split()[0]}",  # e.g. Senior DevOps
                 ]
             elif norm_sen == "lead":
                 search_terms = [
                     f"Lead {base_role}",
-                    f"{base_role} Lead",
-                    f"{base_role} Team Lead",
+                    f"Lead {core_domain}",
+                    f"{core_domain} Lead",
+                    f"{core_domain} Manager",
                 ]
             elif norm_sen == "staff":
                 search_terms = [
                     f"Staff {base_role}",
-                    f"Senior {base_role}",
+                    f"Senior {core_domain}",
+                    f"Staff {core_domain}",
                 ]
             elif norm_sen in ["principal", "director"]:
                 search_terms = [
                     f"Principal {base_role}",
-                    f"Director of {base_role}",
+                    f"Director of {core_domain}",
+                    f"Head of {core_domain}",
                 ]
             else:
                 # Any: clean representative mix
                 search_terms = [
                     base_role,
-                    f"Senior {base_role}",
-                    f"Lead {base_role}",
+                    core_domain,
+                    f"Senior {core_domain}",
+                    f"Lead {core_domain}",
                 ]
 
         # Compile exclusions: global exclusions (filtered for target conflict) + user exclusions + seniority exclusions

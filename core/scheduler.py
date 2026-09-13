@@ -68,25 +68,26 @@ class BalancedScheduler:
 
     def build_round_robin_plan(self, locations: list, sites: list, terms: list, region: str) -> list:
         """
-        Builds a comprehensive plan with location-first rotation so that
-        the start location rotates on every pass.
+        Builds an interleaved plan guaranteeing that every configured location
+        is searched on the first pass before any city is repeated, cycling across
+        available sites and search terms.
         """
         plan = []
-        if not locations:
+        if not locations or not sites or not terms:
             return plan
 
-        for term_index, term in enumerate(terms):
-            for site in sites:
-                for offset in range(len(locations)):
-                    idx = (term_index + offset) % len(locations)
-                    loc = locations[idx]
-                    plan.append({
-                        "region": region,
-                        "location": loc,
-                        "country": self.country_map.get(loc, ""),
-                        "term": term,
-                        "site": site,
-                    })
+        num_rounds = max(len(sites) * len(terms), 10)
+        for round_idx in range(num_rounds):
+            for loc_idx, loc in enumerate(locations):
+                site = sites[(round_idx + loc_idx) % len(sites)]
+                term = terms[(round_idx + loc_idx) % len(terms)]
+                plan.append({
+                    "region": region,
+                    "location": loc,
+                    "country": self.country_map.get(loc, ""),
+                    "term": term,
+                    "site": site,
+                })
         return plan
 
     def build_global_plan(self, terms: list) -> list:
@@ -104,23 +105,10 @@ class BalancedScheduler:
         ]
 
     def take_evenly_spread(self, plan: list, budget: int) -> list:
-        """Evenly samples items across the plan up to the region budget."""
+        """Takes items sequentially from the interleaved plan to preserve complete city coverage."""
         if not plan or budget <= 0:
             return []
-        if len(plan) <= budget:
-            return plan
-
-        step = len(plan) / budget
-        indexes = [min(int(i * step), len(plan) - 1) for i in range(budget)]
-
-        seen = set()
-        selected = []
-        for idx in indexes:
-            if idx not in seen:
-                seen.add(idx)
-                selected.append(plan[idx])
-
-        return selected[:budget]
+        return plan[:budget]
 
     def generate_execution_queues(self, search_terms: list, geography_choice: str = "All", mode: str = "Express") -> tuple:
         """Creates the interleaved queue iterator for India, Middle East, and Global."""
