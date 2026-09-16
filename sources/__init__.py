@@ -1,5 +1,5 @@
 from .base import BaseSourceAdapter
-from .jobspy_adapter import JobSpyAdapter
+from .multiboard_adapter import JobSpyAdapter
 from .multiboard_adapter import MultiBoardAdapter
 from .remoteok_adapter import RemoteOKAdapter
 from .remotive_adapter import RemotiveAdapter
