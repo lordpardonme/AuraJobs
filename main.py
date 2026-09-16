@@ -28,7 +28,16 @@ from core.scorer import MatchScorer, calculate_age_hours
 from core.deduper import deduplicate_jobs
 from core.checkpoint import CheckpointManager
 from core.exporters import OutputExporter
-from sources import MultiBoardAdapter, RemoteOKAdapter, RemotiveAdapter, HimalayasAdapter, ATSAdapter
+from sources import (
+    MultiBoardAdapter,
+    RemoteOKAdapter,
+    RemotiveAdapter,
+    HimalayasAdapter,
+    ATSAdapter,
+    FreeHireAdapter,
+    ArbeitnowAdapter,
+    AIJobsAdapter,
+)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="AuraJobs - Autonomous Career Intelligence Engine")
@@ -191,8 +200,8 @@ def main():
     print(f"  Freshness Window: Last {max_hours} Hours")
     print(f"  Target Region   : {geography_choice}")
     print(f"  Search Mode     : {search_mode.upper()} ({target_searches} regional scraper queries)")
-    print(f"  Direct Sources  : RemoteOK, Remotive, Himalayas, Ashby ATS, Greenhouse ATS")
-    print(f"  Scraper Sources : LinkedIn, Indeed, Google")
+    print(f"  Direct Sources  : RemoteOK, Remotive, Himalayas, FreeHire, Arbeitnow, AIJobs, Ashby, Greenhouse")
+    print(f"  Scraper Sources : LinkedIn, Indeed, Google, Naukri, Bayt (with Scrapling Anti-Bot Escalation)")
     print(f"  Safety Limits   : Max {max_searches} searches | Max {max_runtime} mins")
     print("=" * 78 + "\n")
 
@@ -233,31 +242,40 @@ def main():
     stop_reason = "NORMAL_COMPLETION"
 
     # =========================================================================
-    # STAGE 1: INSTANT PUBLIC APIS & DIRECT ATS (ASHBY + GREENHOUSE)
+    # STAGE 1: INSTANT ZERO-AUTH PUBLIC APIS & DIRECT ATS FEEDS
     # =========================================================================
     print("=" * 78)
-    print("  STAGE 1: INSTANT PUBLIC APIS & DIRECT ATS (ASHBY + GREENHOUSE)")
+    print("  STAGE 1: INSTANT ZERO-AUTH PUBLIC APIS & DIRECT ATS FEEDS")
     print("=" * 78)
-    print("Querying RemoteOK, Remotive, Himalayas, Ashby & Greenhouse in parallel...")
+    print("Querying RemoteOK, Remotive, Himalayas, FreeHire, Arbeitnow, AIJobs, Ashby & Greenhouse...")
 
     api_start = time.time()
     rok = RemoteOKAdapter()
     rem = RemotiveAdapter()
     him = HimalayasAdapter()
     ats = ATSAdapter()
+    fh = FreeHireAdapter()
+    an = ArbeitnowAdapter()
+    ai = AIJobsAdapter()
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=7) as executor:
         f_rok = executor.submit(rok.fetch_jobs, profile["target_role"], profile.get("positive_title_terms", []))
         f_rem = executor.submit(rem.fetch_jobs, profile["target_role"])
         f_him = executor.submit(him.fetch_jobs, profile["target_role"], profile.get("positive_title_terms", []))
         f_ats = executor.submit(ats.fetch_all_ats, profile["target_role"], profile.get("positive_title_terms", []))
+        f_fh = executor.submit(fh.fetch_jobs, profile["target_role"], geography_choice)
+        f_an = executor.submit(an.fetch_jobs, profile["target_role"])
+        f_ai = executor.submit(ai.fetch_jobs, profile["target_role"])
 
         df_rok = f_rok.result()
         df_rem = f_rem.result()
         df_him = f_him.result()
         df_ats = f_ats.result()
+        df_fh = f_fh.result()
+        df_an = f_an.result()
+        df_ai = f_ai.result()
 
-    api_dfs = [d for d in [df_rok, df_rem, df_him, df_ats] if not d.empty]
+    api_dfs = [d for d in [df_rok, df_rem, df_him, df_ats, df_fh, df_an, df_ai] if not d.empty]
     if api_dfs:
         combined_api = pd.concat(api_dfs, ignore_index=True)
         collected_dfs.append(combined_api)
@@ -268,6 +286,9 @@ def main():
     print(f"  +--> Remotive   : {len(df_rem)} listings")
     print(f"  +--> Himalayas  : {len(df_him)} listings")
     print(f"  +--> Direct ATS : {len(df_ats)} listings (Linear, Notion, Cursor, GitLab, Stripe, etc.)")
+    print(f"  +--> FreeHire   : {len(df_fh)} listings (Greenhouse, Lever, Freshteam, Recruitee ATS)")
+    print(f"  +--> Arbeitnow  : {len(df_an)} listings (Europe / Global Remote)")
+    print(f"  +--> AI Jobs    : {len(df_ai)} listings (Live AI/ML company crawl)")
     print(f"  [OK] Ingested {total_jobs_found} verified jobs across all APIs in {api_time:.1f}s!\n")
 
     # =========================================================================
@@ -410,6 +431,14 @@ def main():
     print("\nOUTPUT FILE CREATED:")
     print(f"  ==> {output_filepath}")
     print("=" * 78 + "\n")
+
+    # Optional Mobile Notification Dispatcher (Telegram Staging Engine)
+    try:
+        from core.notifications import dispatch_job_notifications
+        records = final_df.to_dict(orient="records") if not final_df.empty else []
+        dispatch_job_notifications(records, csv_path=output_filepath)
+    except Exception as e:
+        pass
 
 if __name__ == "__main__":
     main()

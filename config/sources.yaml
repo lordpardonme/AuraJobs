@@ -3,6 +3,44 @@
 # ============================================================
 
 sources:
+  # ------------------------------------------------------------
+  # STAGE 1: DIRECT PUBLIC APIS & ATS INTEGRATIONS
+  # Zero-authentication, zero-block, high-yield direct feeds
+  # ------------------------------------------------------------
+  remoteok:
+    enabled: true
+    endpoint: "https://remoteok.com/api"
+
+  remotive:
+    enabled: true
+    endpoint: "https://remotive.com/api/remote-jobs"
+
+  himalayas:
+    enabled: true
+    endpoint: "https://himalayas.app/jobs/api"
+
+  ats:
+    enabled: true
+    providers: ["ashby", "greenhouse"]
+
+  freehire:
+    enabled: true
+    search_endpoint: "https://freehire.me/api/v1/jobs/search"
+    notes: "Aggregates across Greenhouse, Lever, Freshteam, Recruitee with native India and Global Remote coverage."
+
+  arbeitnow:
+    enabled: true
+    endpoint: "https://www.arbeitnow.com/api/job-board-api"
+    notes: "Curated European and Global Remote tech & design listings."
+
+  aijobs:
+    enabled: true
+    endpoint: "https://artificialintelligencejobs.co/api/jobs"
+    notes: "Direct crawler across 260+ AI/ML companies with direct ATS apply URLs."
+
+  # ------------------------------------------------------------
+  # STAGE 2: MULTI-BOARD SCRAPERS & ANTI-BOT ESCALATION
+  # ------------------------------------------------------------
   multiboard:
     enabled: true
     regional_sites:
@@ -16,16 +54,27 @@ sources:
         - "linkedin"
         - "indeed"
         - "google"
+        - "bayt"
       Global:
         - "linkedin"
         - "indeed"
         - "google"
     site_notes:
-      bayt: "Currently returning 403 Forbidden on international endpoints; disabled by default."
-      ziprecruiter: "US/Canada-focused, disabled for IN/ME default budget."
-      naukri: "Subject to 406 recaptcha, caught gracefully."
+      bayt: "Escalated to Scrapling stealth browser on 403 blocks."
+      naukri: "Escalated to Scrapling stealth browser on 406 recaptcha."
       glassdoor: "Subject to 400 location issues, caught gracefully."
+      ziprecruiter: "US/Canada-focused, disabled for IN/ME default budget."
 
+  # Scrapling Anti-Bot & Turnstile Escalation Engine
+  scrapling:
+    enabled: true
+    solve_cloudflare: true
+    hide_canvas: true
+    block_webrtc: true
+    network_idle: false
+    timeout_ms: 15000
+
+  # Backwards compatibility alias
   jobspy:
     enabled: true
     regional_sites:
@@ -39,6 +88,7 @@ sources:
         - "linkedin"
         - "indeed"
         - "google"
+        - "bayt"
       Global:
         - "linkedin"
         - "indeed"

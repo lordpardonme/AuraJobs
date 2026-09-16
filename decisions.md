@@ -86,6 +86,29 @@
 
 ---
 
+### ADR-008: Stage 1 Expansion with Zero-Auth Public APIs (`FreeHire`, `Arbeitnow`, `AIJobs`)
+* **Context**: Research into `public-apis/public-apis#jobs` identified 3 high-yield, zero-authentication job platforms: `freehire.me`, `arbeitnow.com`, and `artificialintelligencejobs.co`.
+* **Decision**: Created dedicated adapters for all three:
+  1. [`sources/freehire_adapter.py`](file:///d:/JobSpy/sources/freehire_adapter.py): Aggregates ATS job postings (Greenhouse, Lever, Freshteam, Recruitee) with native coverage of Indian tech metros (Bengaluru, Mumbai, Delhi, Hyderabad) and Global Remote.
+  2. [`sources/arbeitnow_adapter.py`](file:///d:/JobSpy/sources/arbeitnow_adapter.py): Curated European and Global Remote tech listings with tags and pagination.
+  3. [`sources/aijobs_adapter.py`](file:///d:/JobSpy/sources/aijobs_adapter.py): Live crawler indexing 260+ AI/ML startups with direct application URLs to Ashby and Greenhouse.
+* **Why This Approach?**:
+  - Expands Stage 1 from 4 to 7 concurrent, block-free feeds without API keys or token management.
+  - Slashes reliance on HTML web scraping by ingesting thousands of direct ATS roles instantly in parallel.
+
+---
+
+### ADR-009: Cascading Anti-Bot Escalation via Scrapling & Patchright Engine
+* **Context**: Target job boards like **Naukri** (HTTP 406 Not Acceptable recaptcha) and **Bayt** (international HTTP 403 Forbidden) block fast HTTP clients like `requests` and standard Playwright due to CDP and canvas leaks.
+* **Decision**: Integrated [Scrapling](https://github.com/D4Vinci/Scrapling) (`StealthyFetcher` powered by `patchright`) into [`sources/scrapling_adapter.py`](file:///d:/JobSpy/sources/scrapling_adapter.py) with a **Cascading Escalation Strategy** inside [`sources/multiboard_adapter.py`](file:///d:/JobSpy/sources/multiboard_adapter.py):
+  - Primary tier: Fast HTTP requests (`scrape_jobs`) execute first (preserving sub-second query speed).
+  - Escalation tier: If bot detection (403/406/Turnstile) is encountered on Naukri or Bayt, the search transparently escalates to `StealthyFetcher` (`solve_cloudflare=True`, `hide_canvas=True`, `block_webrtc=True`, `network_idle=True`).
+* **Why This Approach?**:
+  - Avoids the high latency and memory overhead of launching a browser for every simple search.
+  - Eliminates 0-match dead ends on bot-protected platforms while maintaining blazing-fast performance.
+
+---
+
 ## 2. End-to-End Execution Flow Trace
 
 This section traces exactly how code executes in AuraJobs, from the initial launcher invocation to the final CSV generation.
@@ -112,16 +135,24 @@ This section traces exactly how code executes in AuraJobs, from the initial laun
         ├──► Step 2: Checkpoint Check
         │       └── [core/checkpoint.py: load()] (Resume if interrupted)
         │
-        ├──► Step 3: Stage 1 - Parallel Direct ATS & Remote APIs
+        ├──► Step 3: Stage 1 - 7-Worker Parallel Zero-Auth APIs & Direct ATS
         │       ├── [sources/remoteok_adapter.py: fetch_jobs()]
         │       ├── [sources/remotive_adapter.py: fetch_jobs()]
         │       ├── [sources/himalayas_adapter.py: fetch_jobs()]
-        │       └── [sources/ats_adapter.py: fetch_all_ats()] (Ashby + Greenhouse + Lever)
+        │       ├── [sources/ats_adapter.py: fetch_all_ats()] (Ashby + Greenhouse + Lever)
+        │       ├── [sources/freehire_adapter.py: fetch_jobs()] (Greenhouse, Recruitee, Freshteam)
+        │       ├── [sources/arbeitnow_adapter.py: fetch_jobs()] (Europe & Global Remote)
+        │       └── [sources/aijobs_adapter.py: fetch_jobs()] (260+ AI Company ATS Crawler)
         │
-        ├──► Step 4: Stage 2 - Balanced Regional Scraper Queue
+        ├──► Step 4: Stage 2 - Cascading Multi-Board Scraper Queue
         │       └── While budget remaining:
         │               └── [sources/multiboard_adapter.py: search_single_site()]
-        │                       ├── scrape_jobs(LinkedIn, Indeed, Google)
+        │                       ├── Level 1: Fast HTTP scrape_jobs(LinkedIn, Indeed, Google)
+        │                       │       Did it return jobs?
+        │                       │         ├─► YES: Yield results
+        │                       │         └─► NO (403 / 406 Bot Block on Naukri / Bayt):
+        │                       │               └── Level 2: [sources/scrapling_adapter.py]
+        │                       │                       └── StealthyFetcher (Patchright + Turnstile Solver)
         │                       ├── CheckpointManager.save_progress()
         │                       └── Console progress bar & ETA update
         │
@@ -153,17 +184,22 @@ This section traces exactly how code executes in AuraJobs, from the initial laun
 | **6** | `main.py:main()` | `BalancedScheduler()` | `core/scheduler.py:11` | Loads `locations.yaml`, `sources.yaml`, and `settings.yaml`. |
 | **7** | `main.py:main()` | `generate_execution_queues()` | `core/scheduler.py:125` | Builds interleaved, location-first query iterators. |
 | **8** | `main.py:main()` | `CheckpointManager.load()` | `core/checkpoint.py:15` | Inspects `checkpoints/` for prior session recovery. |
-| **9** | `main.py:main()` | `ThreadPoolExecutor()` | `main.py:230` | Concurrently executes Stage 1 direct API adapters. |
-| **10** | Stage 1 Worker | `ATSAdapter.fetch_all_ats()` | `sources/ats_adapter.py` | Queries Ashby, Greenhouse, and Lever public job feeds. |
-| **11** | Stage 2 Loop | `MultiBoardAdapter.search_single_site()` | `sources/multiboard_adapter.py:30` | Queries LinkedIn, Indeed, Google, or Glassdoor for given city/term. |
-| **12** | Stage 2 Loop | `CheckpointManager.save_progress()` | `core/checkpoint.py:28` | Saves intermediate search state every 5 searches. |
-| **13** | `main.py:main()` | `process_results()` | `main.py:51` | Orchestrates cleaning, filtering, scoring, and deduplication. |
-| **14** | `process_results()` | `normalize_dataframe()` | `core/normalizer.py:41` | Transforms raw heterogeneous columns into 27 canonical fields. |
-| **15** | `process_results()` | `RoleClassifier.filter_dataframe()` | `core/classifier.py:58` | Applies token-set positive matching and strict exclusions. |
-| **16** | `process_results()` | `detect_visa_sponsorship()` | `core/visa.py:10` | Regex scanner for H1B, sponsorship, and visa requirements. |
-| **17** | `process_results()` | `MatchScorer.calculate_score()` | `core/scorer.py:28` | Computes 0–100 relevance score based on skill and title density. |
-| **18** | `process_results()` | `deduplicate_jobs()` | `core/deduper.py:12` | Merges duplicate job postings across platforms. |
-| **19** | `main.py:main()` | `OutputExporter.export_single_file()` | `core/exporters.py:20` | Writes single consolidated CSV with UTF-8 BOM encoding. |
+| **9** | `main.py:main()` | `ThreadPoolExecutor(max_workers=7)` | `main.py:255` | Concurrently executes 7 Stage 1 direct API adapters. |
+| **10** | Stage 1 Worker | `FreeHireAdapter.fetch_jobs()` | `sources/freehire_adapter.py` | Queries `freehire.me` ATS aggregator for India and Global jobs. |
+| **11** | Stage 1 Worker | `ArbeitnowAdapter.fetch_jobs()` | `sources/arbeitnow_adapter.py` | Queries `arbeitnow.com` for EU/Remote technology vacancies. |
+| **12** | Stage 1 Worker | `AIJobsAdapter.fetch_jobs()` | `sources/aijobs_adapter.py` | Queries `artificialintelligencejobs.co` for AI/ML roles. |
+| **13** | Stage 1 Worker | `ATSAdapter.fetch_all_ats()` | `sources/ats_adapter.py` | Queries Ashby, Greenhouse, and Lever public job feeds. |
+| **14** | Stage 2 Loop | `MultiBoardAdapter.search_single_site()` | `sources/multiboard_adapter.py:30` | Fast HTTP scrape with cascading fallback to Scrapling. |
+| **15** | Stage 2 Escalation | `ScraplingStealthAdapter.scrape_naukri()` | `sources/scrapling_adapter.py:42` | Headless Patchright session solving Naukri 406 anti-bot challenges. |
+| **16** | Stage 2 Escalation | `ScraplingStealthAdapter.scrape_bayt()` | `sources/scrapling_adapter.py:84` | Headless Patchright session bypassing Bayt 403 regional restrictions. |
+| **17** | Stage 2 Loop | `CheckpointManager.save_progress()` | `core/checkpoint.py:28` | Saves intermediate search state every 5 searches. |
+| **18** | `main.py:main()` | `process_results()` | `main.py:51` | Orchestrates cleaning, filtering, scoring, and deduplication. |
+| **19** | `process_results()` | `normalize_dataframe()` | `core/normalizer.py:41` | Transforms raw heterogeneous columns into 27 canonical fields. |
+| **20** | `process_results()` | `RoleClassifier.filter_dataframe()` | `core/classifier.py:58` | Applies token-set positive matching and strict exclusions. |
+| **21** | `process_results()` | `detect_visa_sponsorship()` | `core/visa.py:10` | Regex scanner for H1B, sponsorship, and visa requirements. |
+| **22** | `process_results()` | `MatchScorer.calculate_score()` | `core/scorer.py:28` | Computes 0–100 relevance score based on skill and title density. |
+| **23** | `process_results()` | `deduplicate_jobs()` | `core/deduper.py:12` | Merges duplicate job postings across platforms. |
+| **24** | `main.py:main()` | `OutputExporter.export_single_file()` | `core/exporters.py:20` | Writes single consolidated CSV with UTF-8 BOM encoding. |
 
 ---
 
@@ -173,26 +209,32 @@ Here is the exact record of every file changed, added, or removed during this de
 
 | File Path | Action | Description of Modifications |
 | :--- | :---: | :--- |
+| `sources/freehire_adapter.py` | **[NEW]** | Created zero-auth direct ATS aggregator adapter (`freehire.me`) with India and Global remote coverage. |
+| `sources/arbeitnow_adapter.py` | **[NEW]** | Created zero-auth EU and Global Remote tech listings adapter (`arbeitnow.com`). |
+| `sources/aijobs_adapter.py` | **[NEW]** | Created zero-auth live AI/ML career page crawler adapter (`artificialintelligencejobs.co`). |
+| `sources/scrapling_adapter.py` | **[NEW]** | Created `ScraplingStealthAdapter` utilizing `StealthyFetcher` (Patchright, Turnstile solver, canvas noise, WebRTC block). |
+| `sources/multiboard_adapter.py` | **[MODIFIED]** | Added Cascading Anti-Bot Escalation hooking Scrapling when fast HTTP hits 406/403 blocks on Naukri or Bayt. |
+| `sources/__init__.py` | **[MODIFIED]** | Exported `FreeHireAdapter`, `ArbeitnowAdapter`, `AIJobsAdapter`, and `ScraplingStealthAdapter`. |
+| `config/sources.yaml` | **[MODIFIED]** | Added configuration sections and toggles for `freehire`, `arbeitnow`, `aijobs`, and `scrapling`. |
+| `requirements.txt` | **[MODIFIED]** | Pinned `scrapling>=0.4.15` and `patchright>=1.62.0`. |
+| `pyproject.toml` | **[MODIFIED]** | Added `scrapling` and `patchright` to build dependencies. |
+| `main.py` | **[MODIFIED]** | Expanded Stage 1 parallel thread pool from 4 to 7 workers; updated CLI banner and status reporting. |
+| `tests/test_new_adapters.py` | **[NEW]** | Created comprehensive unit test suite covering all 3 new adapters, Scrapling import, and escalation flags. |
+| `decisions.md` | **[MODIFIED]** | Documented ADR-008, ADR-009, updated 7-worker Stage 1 execution flow diagram, and updated function call graph. |
 | `run_aurajobs.bat` | **[NEW]** | Created modern 1-click launcher with UTF-8 codepage and auto-dependency setup. |
 | `run_aurajobs_balanced.bat` | **[NEW]** | Created balanced batch runner for India + Middle East + Global scans. |
 | `run_jobspy.bat` | **[DELETED]** | Removed legacy, hardcoded batch script. |
 | `run_jobspy_balanced.bat` | **[DELETED]** | Removed legacy balanced batch script. |
 | `search_jobs.py` | **[DELETED]** | Removed monolithic legacy script in favor of modular `main.py`. |
 | `search_jobs_balanced.py` | **[DELETED]** | Removed monolithic legacy script in favor of modular `main.py`. |
-| `sources/multiboard_adapter.py` | **[NEW]** | Rebranded multi-board scraper adapter with error isolation and rate limiting. |
 | `sources/jobspy_adapter.py` | **[MODIFIED]** | Refactored into a backward-compatibility proxy pointing to `MultiBoardAdapter`. |
-| `sources/__init__.py` | **[MODIFIED]** | Exported `MultiBoardAdapter` and `JobSpyAdapter`. |
-| `config/sources.yaml` | **[MODIFIED]** | Added `multiboard` configuration section. |
 | `config/roles.yaml` | **[MODIFIED]** | Added 6 business & enterprise presets (`product_management`, `growth_marketing`, `operations_strategy`, `people_talent_hr`, `sales_business_development`, `hris_hr_tech`). |
 | `core/expander.py` | **[MODIFIED]** | Added core domain extraction from multi-word roles; fixed senior prefix explosion; added self-exclusion guard for creative titles. |
 | `core/classifier.py` | **[MODIFIED]** | Implemented token-set and word-order invariant matching; added `ROLE_LEVEL_NOUNS` filtering. |
 | `core/scheduler.py` | **[MODIFIED]** | Implemented location-first interleaving to guarantee full coverage of all 13 configured cities. |
 | `core/prompt.py` | **[MODIFIED]** | Rebranded CLI banner; updated placeholder examples to be multi-domain (Product, HRIS, Engineering). |
 | `core/exporters.py` | **[MODIFIED]** | Updated output prefix to `AURAJOBS_*`; added `match_type` to priority column order. |
-| `main.py` | **[MODIFIED]** | Rebranded CLI descriptions; added Graceful Fallback Mode for zero-match searches; updated live terminal summary report. |
 | `.gitignore` | **[NEW]** | Excluded all raw CSV dumps, test outputs, checkpoints, and caches. |
-| `requirements.txt` | **[NEW]** | Pinned core dependencies (`python-jobspy`, `pandas`, `pyyaml`, `requests`, `tabulate`). |
-| `pyproject.toml` | **[NEW]** | Defined package metadata, classifiers, and project URLs. |
 | `LICENSE` | **[NEW]** | Standard MIT License attributed to `lordpardonme`. |
 | `README.md` | **[NEW]** | Comprehensive documentation with architecture diagram, quickstart, CLI reference, and badges. |
 | `CONTRIBUTING.md` | **[NEW]** | Open-source contribution guidelines for taxonomies and adapters. |

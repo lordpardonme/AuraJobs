@@ -1,0 +1,7 @@
+telegram:
+  enabled: true
+  bot_token: 8615724456:AAHUE4qau60pmMMgQpZMa9NZfgQdXk37DJE
+  chat_id: '8124047148'
+  min_match_score: 80
+  max_alert_cards: 5
+  send_csv_digest: true

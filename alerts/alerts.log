@@ -1,0 +1,23 @@
+2026-09-16 08:26:00,326 | INFO     | aurajobs.alerts.scheduler | Starting scheduled run
+2026-09-16 08:27:31,032 | INFO     | scrapling | Fetched (200) <GET https://www.naukri.com/software-engineer-jobs-in-mumbai> (referer: https://www.google.com/)
+2026-09-16 08:27:47,293 | INFO     | aurajobs.alerts.telegram | Dispatching 5 job alerts
+2026-09-16 08:27:47,808 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:03,320 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:03,321 | WARNING  | aurajobs.alerts.telegram | Failed to send job card
+2026-09-16 08:28:03,822 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:03,823 | WARNING  | aurajobs.alerts.telegram | Failed to send job card
+2026-09-16 08:28:04,382 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:04,383 | WARNING  | aurajobs.alerts.telegram | Failed to send job card
+2026-09-16 08:28:04,873 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:04,874 | WARNING  | aurajobs.alerts.telegram | Failed to send job card
+2026-09-16 08:28:20,391 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:20,392 | WARNING  | aurajobs.alerts.telegram | Failed to send job card
+2026-09-16 08:28:29,036 | ERROR    | aurajobs.alerts.telegram | Telegram client error, not retrying
+2026-09-16 08:28:29,037 | WARNING  | aurajobs.alerts.telegram | Failed to send CSV digest
+2026-09-16 08:28:29,479 | INFO     | aurajobs.alerts.telegram | Marked 7 jobs as sent in AlertState
+2026-09-16 08:28:29,480 | INFO     | aurajobs.alerts.telegram | Dispatch complete
+2026-09-16 08:28:29,480 | INFO     | aurajobs.alerts.scheduler | Scheduled run completed
+2026-09-16 08:28:41,008 | INFO     | aurajobs.alerts.scheduler | Starting scheduled run
+2026-09-16 08:30:05,494 | INFO     | scrapling | Fetched (200) <GET https://www.naukri.com/software-engineer-jobs-in-mumbai> (referer: https://www.google.com/)
+2026-09-16 08:30:23,485 | INFO     | aurajobs.alerts.telegram | No new jobs to alert after filtering and deduplication
+2026-09-16 08:30:23,485 | INFO     | aurajobs.alerts.scheduler | Scheduled run completed

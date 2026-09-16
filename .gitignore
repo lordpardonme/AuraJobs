@@ -17,6 +17,7 @@ jobs.csv
 # Environments & Virtual Envs
 .env
 .venv
+.runtime/
 env/
 venv/
 ENV/

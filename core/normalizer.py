@@ -48,8 +48,8 @@ def normalize_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
     now_str = datetime.now().isoformat()
 
     for _, r in df.iterrows():
-        # Map source fields from JobSpy
-        source = clean_str(r.get("site", r.get("Search Source", "")))
+        # Map source fields from JobSpy and direct API adapters
+        source = clean_str(r.get("site")) or clean_str(r.get("Search Source")) or clean_str(r.get("source")) or "direct_ats"
         source_job_id = clean_str(r.get("id", ""))
         job_url = clean_str(r.get("job_url", r.get("job_url_direct", "")))
         company = clean_str(r.get("company", ""))
