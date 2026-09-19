@@ -38,6 +38,21 @@ sources:
     endpoint: "https://artificialintelligencejobs.co/api/jobs"
     notes: "Direct crawler across 260+ AI/ML companies with direct ATS apply URLs."
 
+  adzuna:
+    enabled: false
+    app_id_env: "ADZUNA_APP_ID"
+    app_key_env: "ADZUNA_APP_KEY"
+    notes: "Free tier: 50 requests/day. Covers UAE, Saudi Arabia, Qatar, Oman, Kuwait, Bahrain. Register at developer.adzuna.com"
+    countries:
+      - "ae"
+      - "sa"
+      - "qa"
+      - "om"
+      - "kw"
+      - "bh"
+      - "in"
+      - "gb"
+
   # ------------------------------------------------------------
   # STAGE 2: MULTI-BOARD SCRAPERS & ANTI-BOT ESCALATION
   # ------------------------------------------------------------

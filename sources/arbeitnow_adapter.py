@@ -3,6 +3,7 @@ import urllib.parse
 import urllib.request
 import pandas as pd
 from .base import BaseSourceAdapter
+from core.cache import cache_adapter_response
 
 class ArbeitnowAdapter(BaseSourceAdapter):
     """
@@ -16,6 +17,7 @@ class ArbeitnowAdapter(BaseSourceAdapter):
     def __init__(self):
         super().__init__(name="arbeitnow")
 
+    @cache_adapter_response()
     def fetch_jobs(self, search_term: str = "", limit: int = 50) -> pd.DataFrame:
         req = urllib.request.Request(
             self.API_BASE,

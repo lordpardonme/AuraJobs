@@ -5,6 +5,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 from .base import BaseSourceAdapter
+from core.cache import cache_adapter_response
 
 class ATSAdapter(BaseSourceAdapter):
     """
@@ -114,6 +115,7 @@ class ATSAdapter(BaseSourceAdapter):
 
         return rows
 
+    @cache_adapter_response()
     def fetch_all_ats(self, target_role: str = "", positive_terms: list = None) -> pd.DataFrame:
         """Queries curated Ashby and Greenhouse boards concurrently in under 3 seconds."""
         terms = [t.lower() for t in (positive_terms or [target_role]) if t]

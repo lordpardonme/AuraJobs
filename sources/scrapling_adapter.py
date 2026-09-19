@@ -114,54 +114,79 @@ class ScraplingStealthAdapter(BaseSourceAdapter):
     def scrape_bayt(self, term: str, location: str = "Middle East", results_wanted: int = 25) -> pd.DataFrame:
         """
         Stealth scraper for Bayt.com, bypassing international HTTP 403 Forbidden blocks.
+        Uses persistent StealthySession to maintain Cloudflare clearance cookies across requests.
         """
+        from scrapling.fetchers import StealthySession
+
         term_clean = urllib.parse.quote(term.strip())
         url = f"https://www.bayt.com/en/international/jobs/{term_clean}-jobs/"
-        page = self.fetch_page(url, wait_selector="li[data-js-job]", solve_cf=True)
-        if not page:
-            return pd.DataFrame()
+
+        # Use persistent session to maintain cf_clearance cookie across paginated requests
+        session_kwargs = {
+            "headless": self.headless,
+            "solve_cloudflare": True,
+            "hide_canvas": True,
+            "block_webrtc": True,
+            "user_data_dir": "./bayt_profile",  # Persist Cloudflare clearance
+        }
 
         rows = []
         try:
-            cards = page.css("li[data-js-job]") or page.css(".has-pointer-d")
-            for card in cards[:results_wanted]:
-                title_elem = card.css_first("h2 a") or card.css_first("a[data-js-job-link]")
-                title = title_elem.text.strip() if title_elem else ""
-                href = title_elem.attrib.get("href", "") if title_elem else ""
-                job_url = f"https://www.bayt.com{href}" if href.startswith("/") else href
+            with StealthySession(**session_kwargs) as session:
+                response = session.fetch(
+                    url,
+                    wait_selector="li[data-js-job]",
+                    timeout=30000,
+                    network_idle=False,
+                    load_dom=True,
+                    wait=3000,
+                )
 
-                comp_elem = card.css_first(".t-nowrap a") or card.css_first(".t-nowrap")
-                company = comp_elem.text.strip() if comp_elem else ""
+                if not response or response.status >= 400:
+                    return pd.DataFrame()
 
-                loc_elem = card.css_first(".t-mute.t-small")
-                loc = loc_elem.text.strip() if loc_elem else location
+                cards = response.css("li[data-js-job]") or response.css(".has-pointer-d")
+                for card in cards[:results_wanted]:
+                    title_elem = card.css_first("h2 a") or card.css_first("a[data-js-job-link]")
+                    title = title_elem.text.strip() if title_elem else ""
+                    href = title_elem.attrib.get("href", "") if title_elem else ""
+                    job_url = f"https://www.bayt.com{href}" if href.startswith("/") else href
 
-                desc_elem = card.css_first(".t-small:not(.t-mute)")
-                desc = desc_elem.text.strip() if desc_elem else ""
+                    comp_elem = card.css_first(".t-nowrap a") or card.css_first(".t-nowrap")
+                    company = comp_elem.text.strip() if comp_elem else ""
 
-                if title:
-                    rows.append({
-                        "id": job_url.split("-")[-1].replace("/", "") if job_url else "",
-                        "title": title,
-                        "company": company,
-                        "location": loc,
-                        "country": "Middle East",
-                        "region": "Middle East",
-                        "description": desc,
-                        "date_posted": "",
-                        "job_url": job_url,
-                        "job_url_direct": job_url,
-                        "salary_min": None,
-                        "salary_max": None,
-                        "currency": "AED",
-                        "is_remote": "remote" in loc.lower(),
-                        "job_type": "Full-time",
-                        "Search Region": "Middle East",
-                        "Search Location": location,
-                        "Search Term": term,
-                        "Search Source": "bayt (scrapling)",
-                    })
-        except Exception:
+                    loc_elem = card.css_first(".t-mute.t-small")
+                    loc = loc_elem.text.strip() if loc_elem else location
+
+                    desc_elem = card.css_first(".t-small:not(.t-mute)")
+                    desc = desc_elem.text.strip() if desc_elem else ""
+
+                    if title:
+                        rows.append({
+                            "id": job_url.split("-")[-1].replace("/", "") if job_url else "",
+                            "title": title,
+                            "company": company,
+                            "location": loc,
+                            "country": "Middle East",
+                            "region": "Middle East",
+                            "description": desc,
+                            "date_posted": "",
+                            "job_url": job_url,
+                            "job_url_direct": job_url,
+                            "salary_min": None,
+                            "salary_max": None,
+                            "currency": "AED",
+                            "is_remote": "remote" in loc.lower(),
+                            "job_type": "Full-time",
+                            "Search Region": "Middle East",
+                            "Search Location": location,
+                            "Search Term": term,
+                            "Search Source": "bayt (scrapling)",
+                        })
+        except Exception as e:
+            # Log error but don't crash the pipeline
+            import logging
+            logging.getLogger(__name__).debug(f"Bayt scraper error: {e}")
             pass
 
         return pd.DataFrame(rows)

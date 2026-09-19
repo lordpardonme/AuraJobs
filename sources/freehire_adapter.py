@@ -3,6 +3,7 @@ import urllib.parse
 import urllib.request
 import pandas as pd
 from .base import BaseSourceAdapter
+from core.cache import cache_adapter_response
 
 class FreeHireAdapter(BaseSourceAdapter):
     """
@@ -19,6 +20,7 @@ class FreeHireAdapter(BaseSourceAdapter):
     def __init__(self):
         super().__init__(name="freehire")
 
+    @cache_adapter_response()
     def fetch_jobs(self, search_term: str = "", location: str = "", limit: int = 50) -> pd.DataFrame:
         params = {"limit": min(limit, 100)}
         if search_term:

@@ -37,7 +37,9 @@ from sources import (
     FreeHireAdapter,
     ArbeitnowAdapter,
     AIJobsAdapter,
+    AdzunaAdapter,
 )
+from core.cache import get_cache, clear_cache
 
 def parse_args():
     parser = argparse.ArgumentParser(description="AuraJobs - Autonomous Career Intelligence Engine")
@@ -49,6 +51,9 @@ def parse_args():
     parser.add_argument("--max-searches", type=int, default=None, help="Hard maximum search count")
     parser.add_argument("--max-runtime", type=int, default=None, help="Hard maximum runtime in minutes")
     parser.add_argument("--non-interactive", action="store_true", help="Run with provided or default arguments without prompting")
+    parser.add_argument("--no-cache", action="store_true", help="Disable API response caching")
+    parser.add_argument("--clear-cache", action="store_true", help="Clear cache before running")
+    parser.add_argument("--cache-ttl", type=int, default=24, help="Cache time-to-live in hours (default 24)")
     return parser.parse_args()
 
 def format_progress_bar(current: int, total: int, bar_length: int = 20) -> str:
@@ -157,6 +162,23 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
+    # Initialize cache
+    if args.clear_cache:
+        clear_cache()
+        print("[OK] Cache cleared.")
+
+    cache = get_cache(
+        cache_dir=os.path.join(base_dir, "cache"),
+        ttl_hours=args.cache_ttl,
+        enabled=not args.no_cache
+    )
+
+    if args.no_cache:
+        print("[INFO] API response caching disabled (--no-cache)")
+    else:
+        stats = cache.stats()
+        print(f"[INFO] API cache: {stats['entries']} entries, {stats['size_mb']} MB, TTL {stats['ttl_hours']}h")
+
     # 1. Obtain Search Profile
     if args.non_interactive:
         profile = prompt_user_profile(
@@ -257,8 +279,9 @@ def main():
     fh = FreeHireAdapter()
     an = ArbeitnowAdapter()
     ai = AIJobsAdapter()
+    adz = AdzunaAdapter()
 
-    with ThreadPoolExecutor(max_workers=7) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         f_rok = executor.submit(rok.fetch_jobs, profile["target_role"], profile.get("positive_title_terms", []))
         f_rem = executor.submit(rem.fetch_jobs, profile["target_role"])
         f_him = executor.submit(him.fetch_jobs, profile["target_role"], profile.get("positive_title_terms", []))
@@ -266,6 +289,7 @@ def main():
         f_fh = executor.submit(fh.fetch_jobs, profile["target_role"], geography_choice)
         f_an = executor.submit(an.fetch_jobs, profile["target_role"])
         f_ai = executor.submit(ai.fetch_jobs, profile["target_role"])
+        f_adz = executor.submit(adz.fetch_jobs, profile["target_role"], "", geography_choice, 25, max_hours)
 
         df_rok = f_rok.result()
         df_rem = f_rem.result()
@@ -274,8 +298,9 @@ def main():
         df_fh = f_fh.result()
         df_an = f_an.result()
         df_ai = f_ai.result()
+        df_adz = f_adz.result()
 
-    api_dfs = [d for d in [df_rok, df_rem, df_him, df_ats, df_fh, df_an, df_ai] if not d.empty]
+    api_dfs = [d for d in [df_rok, df_rem, df_him, df_ats, df_fh, df_an, df_ai, df_adz] if not d.empty]
     if api_dfs:
         combined_api = pd.concat(api_dfs, ignore_index=True)
         collected_dfs.append(combined_api)
@@ -289,6 +314,7 @@ def main():
     print(f"  +--> FreeHire   : {len(df_fh)} listings (Greenhouse, Lever, Freshteam, Recruitee ATS)")
     print(f"  +--> Arbeitnow  : {len(df_an)} listings (Europe / Global Remote)")
     print(f"  +--> AI Jobs    : {len(df_ai)} listings (Live AI/ML company crawl)")
+    print(f"  +--> Adzuna     : {len(df_adz)} listings (Middle East coverage)")
     print(f"  [OK] Ingested {total_jobs_found} verified jobs across all APIs in {api_time:.1f}s!\n")
 
     # =========================================================================
@@ -390,6 +416,20 @@ def main():
     print("=" * 78)
 
     final_df = process_results(raw_combined, profile, scorer, classifier, max_hours)
+
+    # =========================================================================
+    # GITHUB COMPANY ENRICHMENT
+    # =========================================================================
+    if not final_df.empty:
+        print("\n" + "=" * 78)
+        print("  GITHUB COMPANY ENRICHMENT")
+        print("=" * 78)
+        try:
+            from core.github_enrichment import enrich_jobs_with_github
+            final_df = enrich_jobs_with_github(final_df, company_col="company", progress=True)
+            print("[OK] GitHub enrichment completed")
+        except Exception as e:
+            print(f"[WARN] GitHub enrichment failed: {e}")
 
     output_filepath = exporter.export_single_file(
         final_df=final_df,

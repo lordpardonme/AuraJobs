@@ -2,6 +2,7 @@ import json
 import urllib.request
 import pandas as pd
 from .base import BaseSourceAdapter
+from core.cache import cache_adapter_response, get_cache
 
 class RemoteOKAdapter(BaseSourceAdapter):
     """
@@ -14,6 +15,7 @@ class RemoteOKAdapter(BaseSourceAdapter):
     def __init__(self):
         super().__init__(name="remoteok")
 
+    @cache_adapter_response()
     def fetch_jobs(self, target_role: str = "", positive_terms: list = None) -> pd.DataFrame:
         req = urllib.request.Request(
             self.API_URL,

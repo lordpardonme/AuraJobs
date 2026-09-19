@@ -44,3 +44,5 @@ $RECYCLE.BIN/
 .coverage
 htmlcov/
 .pytest_cache/
+cache/
+bayt_profile/

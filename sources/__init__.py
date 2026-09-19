@@ -9,6 +9,7 @@ from .freehire_adapter import FreeHireAdapter
 from .arbeitnow_adapter import ArbeitnowAdapter
 from .aijobs_adapter import AIJobsAdapter
 from .scrapling_adapter import ScraplingStealthAdapter
+from .adzuna_adapter import AdzunaAdapter
 
 __all__ = [
     "BaseSourceAdapter",
@@ -22,4 +23,5 @@ __all__ = [
     "ArbeitnowAdapter",
     "AIJobsAdapter",
     "ScraplingStealthAdapter",
+    "AdzunaAdapter",
 ]

@@ -3,6 +3,7 @@ import urllib.parse
 import urllib.request
 import pandas as pd
 from .base import BaseSourceAdapter
+from core.cache import cache_adapter_response
 
 class RemotiveAdapter(BaseSourceAdapter):
     """
@@ -15,6 +16,7 @@ class RemotiveAdapter(BaseSourceAdapter):
     def __init__(self):
         super().__init__(name="remotive")
 
+    @cache_adapter_response()
     def fetch_jobs(self, search_term: str = "") -> pd.DataFrame:
         query_encoded = urllib.parse.quote(search_term.strip())
         url = f"{self.API_BASE}?search={query_encoded}" if query_encoded else self.API_BASE
