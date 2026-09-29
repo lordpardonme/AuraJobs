@@ -41,7 +41,8 @@ class RemoteOKAdapter(BaseSourceAdapter):
             for item in job_items:
                 pos = str(item.get("position", "")).lower()
                 tags = " ".join(item.get("tags", [])).lower()
-                searchable = f"{pos} {tags}"
+                desc = str(item.get("description", "")).lower()[:500]  # First 500 chars for perf
+                searchable = f"{pos} {tags} {desc}"
 
                 # Match against target terms
                 if terms and not any(term in searchable for term in terms):

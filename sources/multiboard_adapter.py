@@ -23,6 +23,8 @@ class MultiBoardAdapter(BaseSourceAdapter):
         super().__init__(name="multiboard")
         self.request_delay = request_delay
         self.indeed_country_map = indeed_country_map or {
+            "Brasil": "brazil",
+            "Brazil": "brazil",
             "India": "india",
             "United Arab Emirates": "united arab emirates",
             "Saudi Arabia": "saudi arabia",
@@ -45,7 +47,37 @@ class MultiBoardAdapter(BaseSourceAdapter):
             "verbose": 0,
         }
 
-        if region == "Global":
+        if region == "Remoto" or location in ["Remoto", "Home Office", "Teletrabalho"]:
+            kwargs["is_remote"] = True
+            if site == "linkedin":
+                kwargs["location"] = "Brazil"
+                # Only append 'remoto' for Portuguese terms; English terms work
+                # better with is_remote=True alone to avoid double-filtering
+                term_lower = term.lower()
+                if any(w in term_lower for w in ["analista", "engenheiro", "técnico", "tecnico", "suporte", "administrador", "coordenador"]):
+                    if "remoto" not in term_lower and "home office" not in term_lower:
+                        kwargs["search_term"] = f"{term} remoto"
+            elif site in ["indeed", "glassdoor"]:
+                kwargs["location"] = "Remoto"
+                kwargs["country_indeed"] = "brazil"
+            elif site == "google":
+                kwargs["location"] = "Brasil"
+                kwargs["google_search_term"] = f"vagas {term} remoto home office brasil"
+            else:
+                kwargs["location"] = "Brazil"
+        elif region == "Londrina" or "londrina" in location.lower():
+            kwargs["is_remote"] = False
+            if site == "linkedin":
+                kwargs["location"] = "Londrina, Paraná, Brasil"
+            elif site in ["indeed", "glassdoor"]:
+                kwargs["location"] = "Londrina, PR"
+                kwargs["country_indeed"] = "brazil"
+            elif site == "google":
+                kwargs["location"] = "Londrina, PR"
+                kwargs["google_search_term"] = f"vagas {term} Londrina PR"
+            else:
+                kwargs["location"] = "Londrina, PR"
+        elif region == "Global":
             if site == "google":
                 kwargs["google_search_term"] = f"{term} jobs worldwide"
                 kwargs["location"] = "Worldwide"
@@ -53,15 +85,17 @@ class MultiBoardAdapter(BaseSourceAdapter):
                 kwargs["location"] = None
             else:
                 kwargs["location"] = "Worldwide"
-        elif site in ["indeed", "glassdoor"]:
-            kwargs["location"] = location
-            mapped_country = self.indeed_country_map.get(country, country.lower() if country else "india")
-            kwargs["country_indeed"] = mapped_country
-        elif site == "google":
-            kwargs["location"] = location
-            kwargs["google_search_term"] = f"{term} jobs {location}"
-        elif site == "bayt":
-            kwargs["location"] = None
+        elif region == "Brasil" or country in ["Brazil", "Brasil"]:
+            if site == "linkedin":
+                kwargs["location"] = "Brazil" if location in ["Brasil", "Brazil"] else location
+            elif site in ["indeed", "glassdoor"]:
+                kwargs["location"] = location
+                kwargs["country_indeed"] = "brazil"
+            elif site == "google":
+                kwargs["location"] = location
+                kwargs["google_search_term"] = f"vagas {term} {location}"
+            else:
+                kwargs["location"] = location
         else:
             kwargs["location"] = location
 

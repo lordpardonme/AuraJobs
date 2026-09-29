@@ -39,8 +39,11 @@ class HimalayasAdapter(BaseSourceAdapter):
             for item in jobs_list:
                 title = item.get("title", "")
                 title_lower = title.lower()
+                excerpt = str(item.get("excerpt", "")).lower()[:500]
+                company = str(item.get("companyName", "")).lower()
+                searchable = f"{title_lower} {excerpt} {company}"
 
-                if terms and not any(t in title_lower for t in terms):
+                if terms and not any(t in searchable for t in terms):
                     continue
 
                 app_link = item.get("applicationLink") or item.get("url") or ""

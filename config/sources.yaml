@@ -59,7 +59,11 @@ sources:
   multiboard:
     enabled: true
     regional_sites:
-      India:
+      Remoto:
+        - "linkedin"
+        - "indeed"
+        - "google"
+      Londrina:
         - "linkedin"
         - "indeed"
         - "google"
@@ -93,7 +97,11 @@ sources:
   jobspy:
     enabled: true
     regional_sites:
-      India:
+      Remoto:
+        - "linkedin"
+        - "indeed"
+        - "google"
+      Londrina:
         - "linkedin"
         - "indeed"
         - "google"

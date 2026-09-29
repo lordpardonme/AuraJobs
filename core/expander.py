@@ -10,22 +10,23 @@ class RoleExpander:
     """
 
     SENIORITY_PREFIXES = {
-        "intern": ["intern", "internship", "trainee", "student"],
-        "junior": ["junior", "entry level", "entry-level", "graduate", "associate"],
-        "mid-level": ["mid", "mid-level", "mid level"],
-        "senior": ["senior", "sr.", "sr"],
-        "staff": ["staff"],
-        "lead": ["lead", "team lead"],
-        "principal": ["principal", "director", "head of", "head", "vp"],
+        "intern": ["intern", "internship", "trainee", "student", "estagiario", "estagiaria", "estagiário", "estagiária", "estagio", "estágio"],
+        "junior": ["junior", "júnior", "jr.", "jr", "entry level", "entry-level", "graduate", "associate", "iniciante"],
+        "mid-level": ["mid", "mid-level", "mid level", "pleno", "pl.", "pl"],
+        "senior": ["senior", "sênior", "sr.", "sr"],
+        "staff": ["staff", "especialista", "specialist"],
+        "lead": ["lead", "team lead", "lider", "líder", "coordenador", "coordenadora", "tech lead"],
+        "principal": ["principal", "director", "diretor", "diretora", "head of", "head", "gerente", "vp"],
     }
 
     SENIORITY_EXCLUSIONS = {
-        "intern": ["senior", "sr.", "staff", "lead", "principal", "director", "head", "manager", "vp"],
-        "junior": ["senior", "sr.", "staff", "lead", "principal", "director", "head", "manager", "vp"],
-        "senior": ["intern", "internship", "trainee", "junior", "entry level", "student"],
-        "staff": ["intern", "internship", "junior", "entry level", "trainee"],
-        "lead": ["intern", "internship", "junior", "trainee"],
-        "principal": ["intern", "internship", "junior", "entry level", "trainee"],
+        "intern": ["senior", "sênior", "sr.", "sr", "staff", "especialista", "lead", "lider", "líder", "principal", "director", "diretor", "head", "manager", "gerente", "vp", "pleno"],
+        "junior": ["senior", "sênior", "sr.", "sr", "staff", "especialista", "lead", "lider", "líder", "principal", "director", "diretor", "head", "manager", "gerente", "vp", "pleno"],
+        "mid-level": ["intern", "estagio", "estágio", "trainee", "junior", "júnior", "jr", "entry level", "diretor", "vp"],
+        "senior": ["intern", "internship", "estagio", "estágio", "trainee", "junior", "júnior", "jr", "entry level", "student", "estagiario"],
+        "staff": ["intern", "estagio", "estágio", "junior", "júnior", "jr", "entry level", "trainee"],
+        "lead": ["intern", "estagio", "estágio", "junior", "júnior", "jr", "trainee"],
+        "principal": ["intern", "estagio", "estágio", "junior", "júnior", "jr", "trainee"],
     }
 
     def __init__(self, config_path: str = None):
@@ -103,59 +104,61 @@ class RoleExpander:
                 if s not in combined_skills:
                     combined_skills.append(s)
 
-            if norm_sen == "intern":
-                search_terms = [
-                    f"{base_role} Intern",
-                    f"{base_role} Internship",
-                    f"Junior {base_role}",
-                ]
-            elif norm_sen in ["junior", "entry", "entry-level"]:
-                search_terms = [
-                    f"Junior {base_role}",
-                    f"Associate {base_role}",
-                    f"Entry Level {base_role}",
-                ]
-            elif norm_sen in ["mid-level", "mid"]:
-                search_terms = [
-                    base_role,
-                    f"Mid-Level {base_role}",
-                ]
-            elif norm_sen == "senior":
-                # Only keep senior terms from preset
-                senior_terms = [
-                    t for t in base_terms
-                    if "senior" in t.lower() or "sr" in t.lower().split()
-                ]
-                search_terms = senior_terms if senior_terms else [f"Senior {base_role}", f"Sr {base_role}"]
-            elif norm_sen == "lead":
-                lead_terms = [
-                    t for t in base_terms
-                    if "lead" in t.lower() or "manager" in t.lower()
-                ]
-                search_terms = lead_terms if lead_terms else [f"Lead {base_role}", f"{base_role} Lead"]
-            elif norm_sen in ["staff", "principal"]:
-                staff_terms = [
-                    t for t in base_terms
-                    if "staff" in t.lower() or "principal" in t.lower()
-                ]
-                search_terms = staff_terms if staff_terms else [f"{effective_seniority.capitalize()} {base_role}"]
+            if norm_sen in ["intern", "estagio", "estágio"]:
+                intern_terms = [t for t in base_terms if any(w in t.lower() for w in ["intern", "estagio", "estágio", "trainee", "estagiario", "estagiário"])]
+                search_terms = intern_terms if intern_terms else [f"{base_role} Estágio", f"{base_role} Intern"]
+            elif norm_sen in ["junior", "júnior", "jr", "entry", "entry-level"]:
+                jr_terms = [t for t in base_terms if any(w in t.lower() for w in ["junior", "júnior", "jr", "entry", "associate"])]
+                search_terms = jr_terms if jr_terms else [f"{base_role} Júnior", f"{base_role} Jr", f"Junior {base_role}"]
+            elif norm_sen in ["mid-level", "mid", "pleno"]:
+                mid_terms = [t for t in base_terms if any(w in t.lower() for w in ["pleno", "pl", "mid"])]
+                search_terms = mid_terms if mid_terms else [base_role, f"{base_role} Pleno"]
+            elif norm_sen in ["senior", "sênior", "sr"]:
+                senior_terms = [t for t in base_terms if any(w in t.lower() for w in ["senior", "sênior", "sr"])]
+                search_terms = senior_terms if senior_terms else [f"{base_role} Sênior", f"{base_role} Senior", f"{base_role} Sr"]
+            elif norm_sen in ["lead", "lider", "líder"]:
+                lead_terms = [t for t in base_terms if any(w in t.lower() for w in ["lead", "lider", "líder", "coordenador", "manager"])]
+                search_terms = lead_terms if lead_terms else [f"Líder {base_role}", f"Lead {base_role}"]
+            elif norm_sen in ["staff", "especialista"]:
+                staff_terms = [t for t in base_terms if any(w in t.lower() for w in ["staff", "principal", "especialista"])]
+                search_terms = staff_terms if staff_terms else [f"{base_role} Especialista", f"Staff {base_role}"]
             else:
-                # Any seniority: use core balanced terms
-                search_terms = [
-                    base_role,
-                    f"Senior {base_role}",
-                    f"Lead {base_role}",
-                ]
+                # Any seniority: use the full preset search_terms for maximum coverage
+                if base_terms:
+                    search_terms = list(base_terms)
+                elif any(w in base_role.lower() for w in ["analista", "engenheiro", "tecnico", "desenvolvedor"]):
+                    search_terms = [
+                        base_role,
+                        f"{base_role} Pleno",
+                        f"{base_role} Sênior",
+                        f"{base_role} Jr",
+                    ]
+                else:
+                    search_terms = [
+                        base_role,
+                        f"Senior {base_role}",
+                        f"Lead {base_role}",
+                    ]
 
         else:
-            # Dynamic expansion for custom role (e.g. HR Transformation Specialist, DevOps Engineer)
+            # Dynamic expansion for custom role (e.g. Analista de Infraestrutura, DevOps Engineer)
             words = base_role.split()
             generic_role_nouns = {
                 "specialist", "consultant", "manager", "lead", "analyst", "associate",
                 "director", "expert", "advisor", "officer", "coordinator", "partner",
-                "practitioner", "engineer", "developer", "designer"
+                "practitioner", "engineer", "developer", "designer",
+                "analista", "especialista", "consultor", "consultora", "gerente", "coordenador",
+                "coordenadora", "lider", "líder", "engenheiro", "engenheira", "desenvolvedor",
+                "desenvolvedora", "tecnico", "técnico", "administrador", "administradora",
+                "assistente", "suporte"
             }
-            if len(words) >= 2 and words[-1].lower() in generic_role_nouns:
+
+            if len(words) >= 2 and words[0].lower() in generic_role_nouns:
+                if len(words) >= 3 and words[1].lower() in ["de", "do", "da", "em", "e", "para"]:
+                    core_domain = " ".join(words[2:])
+                else:
+                    core_domain = " ".join(words[1:])
+            elif len(words) >= 2 and words[-1].lower() in generic_role_nouns:
                 core_domain = " ".join(words[:-1])
             else:
                 core_domain = base_role
@@ -168,62 +171,68 @@ class RoleExpander:
 
             # Add common title variations for multi-word domain
             if len(words) >= 2:
-                for noun in ["lead", "manager", "consultant", "specialist", "analyst", "advisor"]:
-                    var = f"{core_domain.lower()} {noun}"
+                for noun in ["lider", "líder", "coordenador", "gerente", "especialista", "analista", "lead", "manager", "consultant", "specialist"]:
+                    var = f"{noun} {core_domain.lower()}"
                     if var not in positive_title_terms:
                         positive_title_terms.append(var)
 
-            if norm_sen == "intern":
+            if norm_sen in ["intern", "estagio", "estágio"]:
                 search_terms = [
+                    f"{base_role} Estágio",
+                    f"Estágio {base_role}",
+                    f"Estagiário {base_role}",
+                    f"{base_role} Trainee",
                     f"{base_role} Intern",
-                    f"{base_role} Internship",
-                    f"{core_domain} Intern",
                 ]
-            elif norm_sen in ["junior", "entry", "entry-level"]:
+            elif norm_sen in ["junior", "júnior", "jr", "entry", "entry-level"]:
                 search_terms = [
+                    f"{base_role} Júnior",
+                    f"{base_role} Junior",
+                    f"{base_role} Jr",
                     f"Junior {base_role}",
-                    f"Associate {base_role}",
-                    f"Junior {core_domain}",
                 ]
-            elif norm_sen in ["mid-level", "mid"]:
+            elif norm_sen in ["mid-level", "mid", "pleno"]:
                 search_terms = [
                     base_role,
+                    f"{base_role} Pleno",
                     core_domain,
-                    f"Mid {base_role}",
                 ]
-            elif norm_sen == "senior":
+            elif norm_sen in ["senior", "sênior", "sr"]:
                 search_terms = [
+                    f"{base_role} Sênior",
+                    f"{base_role} Senior",
+                    f"{base_role} Sr",
                     f"Senior {base_role}",
-                    f"Senior {core_domain}",
-                    f"Lead {core_domain}",
-                    f"Sr {base_role}",
+                    f"{core_domain} Sênior",
                 ]
-            elif norm_sen == "lead":
+            elif norm_sen in ["lead", "lider", "líder"]:
                 search_terms = [
+                    f"Líder {base_role}",
+                    f"Coordenador {base_role}",
                     f"Lead {base_role}",
-                    f"Lead {core_domain}",
-                    f"{core_domain} Lead",
-                    f"{core_domain} Manager",
+                    f"{base_role} Lead",
                 ]
-            elif norm_sen == "staff":
+            elif norm_sen in ["staff", "especialista"]:
                 search_terms = [
+                    f"{base_role} Especialista",
+                    f"Especialista {base_role}",
+                    f"Especialista em {core_domain}",
                     f"Staff {base_role}",
-                    f"Senior {core_domain}",
-                    f"Staff {core_domain}",
                 ]
-            elif norm_sen in ["principal", "director"]:
+            elif norm_sen in ["principal", "director", "diretor", "gerente"]:
                 search_terms = [
+                    f"Gerente de {core_domain}",
+                    f"Diretor de {core_domain}",
                     f"Principal {base_role}",
-                    f"Director of {core_domain}",
-                    f"Head of {core_domain}",
                 ]
             else:
-                # Any: clean representative mix
+                # Any:
                 search_terms = [
                     base_role,
+                    f"{base_role} Pleno",
+                    f"{base_role} Sênior",
+                    f"{base_role} Jr",
                     core_domain,
-                    f"Senior {core_domain}",
-                    f"Lead {core_domain}",
                 ]
 
         # Compile exclusions: global exclusions (filtered for target conflict) + user exclusions + seniority exclusions

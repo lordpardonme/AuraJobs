@@ -19,6 +19,7 @@ CANONICAL_COLUMNS = [
     "age_hours",
     "age_bucket",
     "employment_type",
+    "is_remote",
     "remote_status",
     "salary_min",
     "salary_max",
@@ -63,7 +64,11 @@ def normalize_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
 
         # Employment & compensation
         emp_type = clean_str(r.get("job_type", r.get("employment_type", "")))
-        is_remote = r.get("is_remote", None)
+        is_remote_val = r.get("is_remote", None)
+        if is_remote_val is None or pd.isna(is_remote_val):
+            is_remote = None
+        else:
+            is_remote = bool(is_remote_val)
         remote_status = "Remote" if is_remote is True else ("On-site / Hybrid" if is_remote is False else "Unknown")
         salary_min = r.get("min_amount", None)
         salary_max = r.get("max_amount", None)
@@ -93,6 +98,7 @@ def normalize_dataframe(raw_df: pd.DataFrame) -> pd.DataFrame:
             "age_hours": r.get("Age Hours", None),
             "age_bucket": clean_str(r.get("Age Bucket", "")),
             "employment_type": emp_type,
+            "is_remote": is_remote,
             "remote_status": remote_status,
             "salary_min": salary_min,
             "salary_max": salary_max,

@@ -2,21 +2,20 @@
 # RUNTIME & BUDGET SETTINGS
 # ============================================================
 
-# Freshness window in hours (canonical is 72h)
-max_hours: 72
+# Freshness window in hours (canonical is 24h)
+max_hours: 24
 
 # Overall execution hard limits
-max_searches: 60
-max_runtime_minutes: 30
+max_searches: 80
+max_runtime_minutes: 45
 
 # Regional search budget shares (must sum to 1.0)
-india_share: 0.45
-middle_east_share: 0.30
-global_share: 0.25
+remoto_share: 0.50
+londrina_share: 0.50
 
 # Scraper performance
 results_per_site: 25
-request_delay_seconds: 2.5
+request_delay_seconds: 1.8
 
 # Directory layout relative to project root
 directories:

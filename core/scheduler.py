@@ -5,7 +5,7 @@ import yaml
 class BalancedScheduler:
     """
     Manages regional budgets, rotating location offsets, and interleaved
-    round-robin search queue execution.
+    round-robin search queue execution with focus on Brazil, Remote and Global jobs.
     """
 
     def __init__(self, settings_path: str = None, locations_path: str = None, sources_path: str = None):
@@ -25,84 +25,75 @@ class BalancedScheduler:
 
         self.max_searches = self.settings.get("max_searches", 500)
         self.max_runtime_minutes = self.settings.get("max_runtime_minutes", 90)
-        self.india_share = self.settings.get("india_share", 0.45)
-        self.middle_east_share = self.settings.get("middle_east_share", 0.30)
-        self.global_share = self.settings.get("global_share", 0.25)
+        self.remoto_share = self.settings.get("remoto_share", 0.50)
+        self.londrina_share = self.settings.get("londrina_share", 0.50)
 
-        self.india_locations = self.locations_cfg.get("india_locations", [])
-        self.middle_east_locations = self.locations_cfg.get("middle_east_locations", [])
+        self.londrina_locations = self.locations_cfg.get("londrina_locations", [
+            "Londrina, PR", "Londrina, Paraná", "Londrina"
+        ])
+        self.remoto_locations = self.locations_cfg.get("remoto_locations", [
+            "Remoto", "Home Office", "Teletrabalho"
+        ])
         self.country_map = self.locations_cfg.get("country_map", {})
 
         source_cfg = self.sources_cfg.get("sources", {}).get("multiboard") or self.sources_cfg.get("sources", {}).get("jobspy", {})
         regional_sites = source_cfg.get("regional_sites", {})
-        self.india_sites = regional_sites.get("India", ["linkedin", "indeed", "google", "bayt"])
-        self.middle_east_sites = regional_sites.get("Middle East", ["linkedin", "indeed", "google", "bayt"])
-        self.global_sites = regional_sites.get("Global", ["linkedin", "indeed", "google", "bayt"])
+        self.remoto_sites = regional_sites.get("Remoto", ["linkedin", "indeed", "google"])
+        self.londrina_sites = regional_sites.get("Londrina", ["linkedin", "indeed", "google", "glassdoor"])
 
     def get_locations(self, region: str, mode: str = "Express") -> list:
-        if region == "India":
+        if region == "Londrina":
             if mode == "Express":
-                return ["India", "Bengaluru", "Delhi", "Gurgaon", "Mumbai", "Hyderabad"]
-            return self.india_locations
-        elif region == "Middle East":
+                return ["Londrina, PR"]
+            return self.londrina_locations
+        elif region == "Remoto":
             if mode == "Express":
-                return ["Dubai, UAE", "Abu Dhabi, UAE", "Riyadh, Saudi Arabia"]
-            return self.middle_east_locations
+                return ["Remoto", "Home Office"]
+            return self.remoto_locations
         return []
 
-    def calculate_budgets(self, geography_choice: str = "All", mode: str = "Express"):
+    def calculate_budgets(self, geography_choice: str = "Ambos", mode: str = "Express"):
         """Calculates allocated search counts per region based on configured shares and speed mode."""
-        budget_limit = 15 if mode == "Express" else min(60, self.max_searches)
+        budget_limit = 24 if mode == "Express" else min(60, self.max_searches)
 
-        if geography_choice == "India":
-            return budget_limit, 0, 0
-        elif geography_choice == "Middle East":
-            return 0, budget_limit, 0
-        elif geography_choice == "Global":
-            return 0, 0, budget_limit
+        geo_lower = str(geography_choice).lower()
+        if geo_lower in ["remoto", "remote", "remoto only", "apenas remoto"]:
+            return budget_limit, 0
+        elif geo_lower in ["londrina", "londrina only", "apenas londrina"]:
+            return 0, budget_limit
 
-        india = int(budget_limit * self.india_share)
-        middle = int(budget_limit * self.middle_east_share)
-        glob = budget_limit - india - middle
-        return india, middle, glob
+        # Alocação balanceada padrão: Remoto + Londrina
+        remoto_b = int(budget_limit * self.remoto_share)
+        londrina_b = budget_limit - remoto_b
+        return remoto_b, londrina_b
 
     def build_round_robin_plan(self, locations: list, sites: list, terms: list, region: str) -> list:
         """
-        Builds an interleaved plan guaranteeing that every configured location
-        is searched on the first pass before any city is repeated, cycling across
-        available sites and search terms.
+        Builds an interleaved plan guaranteeing that every unique (term, site, location)
+        combination is searched before any is repeated.  Within each round, locations
+        are visited in order so the first pass covers every configured city.
         """
         plan = []
         if not locations or not sites or not terms:
             return plan
 
-        num_rounds = max(len(sites) * len(terms), 10)
-        for round_idx in range(num_rounds):
-            for loc_idx, loc in enumerate(locations):
-                site = sites[(round_idx + loc_idx) % len(sites)]
-                term = terms[(round_idx + loc_idx) % len(terms)]
-                plan.append({
-                    "region": region,
-                    "location": loc,
-                    "country": self.country_map.get(loc, ""),
-                    "term": term,
-                    "site": site,
-                })
+        # Generate ALL unique (location, term, site) combos for maximum diversity
+        seen = set()
+        # First: ensure every term gets at least one search on each site
+        for term in terms:
+            for site in sites:
+                for loc in locations:
+                    key = (loc, term, site)
+                    if key not in seen:
+                        seen.add(key)
+                        plan.append({
+                            "region": region,
+                            "location": loc,
+                            "country": self.country_map.get(loc, "Brazil"),
+                            "term": term,
+                            "site": site,
+                        })
         return plan
-
-    def build_global_plan(self, terms: list) -> list:
-        """Builds plan for Worldwide / Global search targets."""
-        return [
-            {
-                "region": "Global",
-                "location": "GLOBAL",
-                "country": "Worldwide",
-                "term": term,
-                "site": site,
-            }
-            for term in terms
-            for site in self.global_sites
-        ]
 
     def take_evenly_spread(self, plan: list, budget: int) -> list:
         """Takes items sequentially from the interleaved plan to preserve complete city coverage."""
@@ -110,35 +101,31 @@ class BalancedScheduler:
             return []
         return plan[:budget]
 
-    def generate_execution_queues(self, search_terms: list, geography_choice: str = "All", mode: str = "Express") -> tuple:
-        """Creates the interleaved queue iterator for India, Middle East, and Global."""
-        india_b, middle_b, global_b = self.calculate_budgets(geography_choice, mode)
+    def generate_execution_queues(self, search_terms: list, geography_choice: str = "Ambos", mode: str = "Express") -> tuple:
+        """Creates the interleaved queue iterator for Remoto and Londrina."""
+        remoto_b, londrina_b = self.calculate_budgets(geography_choice, mode)
 
         if mode == "Express":
             # Focus on primary high-yield terms in Express mode to prevent repetitive micro-queries
-            search_terms = search_terms[:2] if len(search_terms) > 2 else search_terms
+            search_terms = search_terms[:5] if len(search_terms) > 5 else search_terms
 
-        india_locations = self.get_locations("India", mode)
-        middle_east_locations = self.get_locations("Middle East", mode)
+        remoto_locations = self.get_locations("Remoto", mode)
+        londrina_locations = self.get_locations("Londrina", mode)
 
-        india_plan = self.build_round_robin_plan(india_locations, self.india_sites, search_terms, "India")
-        middle_plan = self.build_round_robin_plan(middle_east_locations, self.middle_east_sites, search_terms, "Middle East")
-        global_plan = self.build_global_plan(search_terms)
+        remoto_plan = self.build_round_robin_plan(remoto_locations, self.remoto_sites, search_terms, "Remoto")
+        londrina_plan = self.build_round_robin_plan(londrina_locations, self.londrina_sites, search_terms, "Londrina")
 
-        india_selected = self.take_evenly_spread(india_plan, india_b)
-        middle_selected = self.take_evenly_spread(middle_plan, middle_b)
-        global_selected = self.take_evenly_spread(global_plan, global_b)
+        remoto_selected = self.take_evenly_spread(remoto_plan, remoto_b)
+        londrina_selected = self.take_evenly_spread(londrina_plan, londrina_b)
 
         queues = {
-            "India": iter(india_selected),
-            "Middle East": iter(middle_selected),
-            "Global": iter(global_selected),
+            "Remoto": iter(remoto_selected),
+            "Londrina": iter(londrina_selected),
         }
 
         counts = {
-            "India": len(india_selected),
-            "Middle East": len(middle_selected),
-            "Global": len(global_selected),
+            "Remoto": len(remoto_selected),
+            "Londrina": len(londrina_selected),
         }
 
         return queues, counts
